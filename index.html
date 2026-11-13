@@ -1383,7 +1383,8 @@ backface-visibility: hidden;
                     </div>
                   </div>
                   <div>
-                    <form id="form2035256651" name="form2035256651" role="form" action="" method="POST" data-formactiontype="0" data-inputbox=".t-input-group" class="t-form js-form-proccess t-form_inputs-total_4 " data-success-callback="t696_onSuccess" data-success-popup="y">
+                    <form id="form2035256651" name="form2035256651" role="form" action="https://api.web3forms.com/submit" method="POST" data-formactiontype="0" data-inputbox=".t-input-group" class="t-form t-form_inputs-total_4 " data-success-callback="t696_onSuccess" data-success-popup="y">
+                      <input type="hidden" name="access_key" value="01f0a9ec-5e15-489b-a0ec-766e4350efb8">
                       <!-- NO ONE SERVICES CONNECTED -->
                       <!-- @classes t-title t-text t-btn -->
                       <div class="js-successbox t-form__successbox t-text t-text_md t-form-success-popup" aria-live="polite" style="display:none;">
@@ -1856,5 +1857,62 @@ t-form__inputsbox_vertical-form t-form__inputsbox_inrow
   }
 })();
 </script>
-  </body>
+  
+<!-- Web3Forms submit handler (replaces Tilda's built-in form processor for this form) -->
+<script>
+(function () {
+  function bindWeb3Forms() {
+    var form = document.getElementById('form2035256651');
+    if (!form) return;
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var name = form.querySelector('input[name="Имя"]');
+      var att = form.querySelector('input[name="Подтверждение"]:checked');
+      // clear previous errors
+      form.querySelectorAll('.t-input-error').forEach(function (b) { b.textContent = ''; b.style.display = 'none'; });
+      var nameErr = (form.querySelector('#error_9320297610610') || name.closest('.t-input-group'));
+      var broken = false;
+      if (!name.value.trim()) { name.style.borderColor = '#ff0000'; nameErr.style.display = 'block'; nameErr.textContent = 'Укажите имя и фамилию'; name.focus(); broken = true; }
+      if (!att) {
+        var rd = form.querySelector('input[name="Подтверждение"]');
+        var grp = rd.closest('.t-input-group');
+        var e = grp.querySelector('.t-input-error');
+        e.style.display = 'block'; e.textContent = 'Выберите вариант ответа'; broken = true;
+        if (!name.value.trim()) name.style.borderColor = '';
+      }
+      if (broken) return false;
+      // sync chosen drinks into the hidden field
+      var drinks = Array.from(form.querySelectorAll('.t-checkbox:checked')).map(function (c) { return c.value; }).join(', ');
+      var hd = form.querySelector('input[name="Напитки"]');
+      if (hd) hd.value = drinks;
+      var btn = form.querySelector('.t-submit');
+      if (btn) { btn.classList.add('t-btn_sending'); btn.disabled = true; }
+      var fd = new FormData(form);
+      fetch('https://api.web3forms.com/submit', { method: 'POST', body: fd })
+        .then(function (r) { return r.json().catch(function () { return { success: false }; }); })
+        .then(function (d) {
+          if (btn) { btn.classList.remove('t-btn_sending'); btn.disabled = false; }
+          if (d && d.success === true) {
+            if (window.tildaForm && window.tildaForm.showSuccessPopupNew) {
+              window.tildaForm.showSuccessPopupNew(form, '', '');
+            } else { alert('Данные отправлены!'); }
+          } else if (d && d.message) {
+            alert('Ошибка: ' + d.message);
+          } else {
+            alert('Не удалось отправить форму. Попробуйте ещё раз.');
+          }
+        })
+        .catch(function () {
+          if (btn) { btn.classList.remove('t-btn_sending'); btn.disabled = false; }
+          alert('Ошибка сети. Проверьте подключение к интернету.');
+        });
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindWeb3Forms);
+  else bindWeb3Forms();
+})();
+</script>
+
+</body>
 </html>

@@ -1894,6 +1894,10 @@ t-form__inputsbox_vertical-form t-form__inputsbox_inrow
         .then(function (d) {
           if (btn) { btn.classList.remove('t-btn_sending'); btn.disabled = false; }
           if (d && d.success === true) {
+            // clear all fields after a successful send
+            form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], textarea, input[type="checkbox"], input[type="radio"]').forEach(function (i) { i.value = ''; i.checked = false; i.style.borderColor = ''; });
+            var hd = form.querySelector('input[name="Напитки"]'); if (hd) hd.value = '';
+            form.querySelectorAll('.t-input-error').forEach(function (b) { b.textContent = ''; b.style.display = 'none'; });
             if (window.tildaForm && window.tildaForm.showSuccessPopupNew) {
               window.tildaForm.showSuccessPopupNew(form, '', '');
             } else { alert('Данные отправлены!'); }

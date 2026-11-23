@@ -1025,7 +1025,7 @@ backface-visibility: hidden;
                     </button>
                   </li>
                 </ul>
-                <div class="t-slds__items-wrapper t-slds__witharrows t-slds_animated-none" id="carousel_2035256611" data-slider-transition="300" data-slider-with-cycle="true" data-slider-correct-height="true" data-auto-correct-mobile-width="false" data-slider-timeout="3000" aria-roledescription="carousel" aria-live="polite" data-slider-initialized="true" data-slider-totalslides="6" data-slider-pos="4" data-slider-cycle="yes" data-slider-animated="" data-swiper-initialized="true" data-slider-interval-id="59" data-slider-stopped="yes" style="width: 3680px; height: 550px; transform: translateX(-1840px);">
+                <div class="t-slds__items-wrapper t-slds__witharrows t-slds_animated-none" id="carousel_2035256611" data-slider-transition="300" data-slider-with-cycle="true" data-slider-correct-height="true" data-auto-correct-mobile-width="false" data-slider-timeout="3000" aria-roledescription="carousel" aria-live="polite" data-slider-initialized="true" data-slider-totalslides="6" data-slider-pos="1" data-slider-cycle="yes" data-slider-animated="" data-swiper-initialized="true" data-slider-interval-id="59" data-slider-stopped="yes" style="width: 3680px; height: 550px; transform: translateX(-1840px);">
                   <div class="t-slds__item t-slds__item-loaded" data-slide-index="0" role="group" aria-roledescription="slide" aria-hidden="true" aria-label="6 из 6" style="width: 460px; opacity: 1; display: block;">
                     <div class="t-width t-width_5 t-margin_auto" itemscope="" itemtype="http://schema.org/ImageObject">
                       <div class="t-slds__wrapper t-align_center">
@@ -1133,7 +1133,7 @@ backface-visibility: hidden;
                 </div>
               </div>
               <ul class="t-slds__bullet_wrapper">
-                <li class="t-slds__bullet" data-slide-bullet-for="1">
+                <li class="t-slds__bullet t-slds__bullet_active" data-slide-bullet-for="1">
                   <button type="button" class="t-slds__bullet_body" aria-label="Перейти к слайду 1" style="background-color: #d9d9d9;">
                   </button>
                 </li>
@@ -1145,7 +1145,7 @@ backface-visibility: hidden;
                   <button type="button" class="t-slds__bullet_body" aria-label="Перейти к слайду 3" style="background-color: #d9d9d9;">
                   </button>
                 </li>
-                <li class="t-slds__bullet t-slds__bullet_active" data-slide-bullet-for="4">
+                <li class="t-slds__bullet" data-slide-bullet-for="4">
                   <button type="button" class="t-slds__bullet_body" aria-label="Перейти к слайду 4" style="background-color: #d9d9d9;" aria-current="true">
                   </button>
                 </li>
@@ -1830,26 +1830,71 @@ t-form__inputsbox_vertical-form t-form__inputsbox_inrow
         </div>
       </div>
     </div>
-    <!-- Fix: re-init Tilda photo carousel (T670) - saved page froze its init flag -->
+    <!-- Fix: re-init Tilda photo carousel (T670) - saved page froze its init flag.
+         t_sldsInit is loaded on demand by Tilda, so we must WAIT until it exists
+         (on a cold load it is not ready at DOMContentLoaded). We clear the state
+         baked into the saved page (position 4, frozen transform, dead arrows) and
+         re-initialise so the carousel starts at slide 1 with working controls. -->
     <script>
 (function () {
-  function initCarousels() {
-    if (typeof t_sldsInit !== 'function') return;
-    var recs = document.querySelectorAll('[data-record-type="670"]');
-    for (var i = 0; i < recs.length; i++) {
-      var rec = recs[i];
-      var w = rec.querySelector('.t-slds__items-wrapper');
-      if (!w) continue;
-      w.removeAttribute('data-slider-initialized');
-      w.removeAttribute('data-swiper-initialized');
-      w.removeAttribute('data-slider-pos');
-      w.style.transform = '';
-      var act = w.querySelectorAll('.t-slds__item_active');
-      for (var j = 0; j < act.length; j++) act[j].classList.remove('t-slds__item_active');
-      var first = w.querySelector('.t-slds__item');
-      if (first) first.classList.add('t-slds__item_active');
-      t_sldsInit(rec);
+  function resetOne(rec) {
+    var w = rec.querySelector('.t-slds__items-wrapper');
+    if (!w) return;
+    var items = Array.prototype.slice.call(w.querySelectorAll('.t-slds__item'));
+    // The saved page has cycle-clones of the first/last slide baked in as real
+    // items (they are not marked .t-slds__item_dummy), so t_sldsInit counts too
+    // many slides and the infinite loop oscillates (1,2,1,2...). The real slide
+    // order is 1..N where N = number of bullets: keep only the length-N
+    // contiguous run whose aria labels are exactly 1..N and drop the clones.
+    var bullets = rec.querySelectorAll('.t-slds__bullet');
+    var N = bullets.length;
+    if (N > 0 && items.length > N) {
+      function label(el) {
+        var m = (el.getAttribute('aria-label') || '').match(/(\d+)\s*из/);
+        return m ? parseInt(m[1], 10) : 0;
+      }
+      var best = -1;
+      for (var s = 0; s + N <= items.length; s++) {
+        var ok = true;
+        for (var k = 0; k < N; k++) { if (label(items[s + k]) !== k + 1) { ok = false; break; } }
+        if (ok) { best = s; break; }
+      }
+      if (best >= 0) {
+        var keep = items.slice(best, best + N);
+        items.forEach(function (it) { if (keep.indexOf(it) === -1) it.parentNode.removeChild(it); });
+        items = keep;
+      }
     }
+    w.removeAttribute('data-slider-initialized');
+    w.removeAttribute('data-swiper-initialized');
+    w.removeAttribute('data-slider-pos');
+    w.removeAttribute('data-slider-totalslides');
+    w.removeAttribute('data-slider-cycle');
+    w.removeAttribute('data-slider-animated');
+    w.removeAttribute('data-slider-interval-id');
+    w.removeAttribute('data-slider-stopped');
+    w.style.transform = '';
+    w.style.width = '';
+    w.style.height = '';
+    var act = w.querySelectorAll('.t-slds__item_active');
+    for (var j = 0; j < act.length; j++) act[j].classList.remove('t-slds__item_active');
+    for (var k = 0; k < items.length; k++) {
+      items[k].removeAttribute('data-slide-index');
+      items[k].removeAttribute('aria-label');
+      items[k].removeAttribute('aria-hidden');
+      items[k].style.opacity = '';
+      items[k].style.display = '';
+    }
+    if (items.length) items[0].classList.add('t-slds__item_active');
+    t_sldsInit(rec);
+  }
+  function initCarousels() {
+    if (typeof t_sldsInit !== 'function') {
+      setTimeout(initCarousels, 50);
+      return;
+    }
+    var recs = document.querySelectorAll('[data-record-type="670"]');
+    for (var i = 0; i < recs.length; i++) resetOne(recs[i]);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setTimeout(initCarousels, 0); });
